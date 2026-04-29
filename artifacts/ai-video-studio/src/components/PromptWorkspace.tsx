@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { getUserKey } from "../lib/userKeys";
 import LocalModelStatus from "./LocalModelStatus";
+import SpeakingAvatar from "./SpeakingAvatar";
 import { motion, AnimatePresence } from "motion/react";
 import { audioAnalyzer } from "../lib/audioAnalysis";
 import {
@@ -278,7 +279,19 @@ const WorldSynthesis = React.memo(({ isMobile }: { isMobile?: boolean }) => (
 ));
 
 const CharacterConsistencyEngine = React.memo(
-  ({ isMobile, config }: { isMobile?: boolean; config: ShotConfig }) => {
+  ({
+    isMobile,
+    config,
+    promptText,
+    lipSyncLevel,
+    onLipSyncLevel,
+  }: {
+    isMobile?: boolean;
+    config: ShotConfig;
+    promptText: string;
+    lipSyncLevel: number;
+    onLipSyncLevel: (level: number) => void;
+  }) => {
     const firstChar = config.selectedCharacters?.[0];
     const hasChars = (config.selectedCharacters?.length || 0) > 0;
 
@@ -314,18 +327,28 @@ const CharacterConsistencyEngine = React.memo(
                 معرف الشخصية الأساسي
               </label>
               <div className="flex items-center space-x-2 p-2 bento-inner bg-blue-600/5 relative overflow-hidden group/prime">
-                <div className="w-12 h-12 bg-zinc-800 rounded-lg border border-blue-500/30 overflow-hidden shrink-0 relative">
-                  <img
-                    src={
-                      firstChar?.avatar ||
-                      "https://picsum.photos/seed/empty/120/120"
-                    }
-                    className={`w-full h-full object-cover transition-all ${hasChars ? "grayscale-[0.2]" : "grayscale"} group-hover/prime:scale-110 group-hover/prime:grayscale-0`}
-                    alt="Protagonist"
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent" />
+                <div className="shrink-0 relative">
+                  {hasChars ? (
+                    <SpeakingAvatar
+                      character={firstChar}
+                      text={promptText}
+                      voiceType={config.voiceType}
+                      size="sm"
+                      externalLevel={lipSyncLevel}
+                      onLevelChange={onLipSyncLevel}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-zinc-800 rounded-xl border border-blue-500/20 overflow-hidden relative">
+                      <img
+                        src="https://picsum.photos/seed/empty/120/120"
+                        className="w-full h-full object-cover grayscale"
+                        alt="Empty slot"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent" />
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black text-white truncate flex items-center gap-1.5">
@@ -1865,7 +1888,13 @@ const PromptWorkspace = React.memo(
         />
 
         {!isMobile && (
-          <CharacterConsistencyEngine isMobile={isMobile} config={config} />
+          <CharacterConsistencyEngine
+            isMobile={isMobile}
+            config={config}
+            promptText={prompt}
+            lipSyncLevel={lipSyncLevel}
+            onLipSyncLevel={setLipSyncLevel}
+          />
         )}
 
         {/* Prompt Engine - Bento Card - Row 5-6, Col 1-4 */}
