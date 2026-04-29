@@ -1,11 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Eye, EyeOff, Save, Trash2, KeyRound, Check, ExternalLink } from "lucide-react";
+import {
+  X,
+  Eye,
+  EyeOff,
+  Save,
+  Trash2,
+  KeyRound,
+  Check,
+  ExternalLink,
+  Loader2,
+  Wifi,
+  AlertCircle,
+} from "lucide-react";
 import {
   getAllUserKeys,
   setUserKey,
+  testUserKey,
   type UserKeyName,
 } from "../lib/userKeys";
+
+type TestState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ok"; message: string }
+  | { status: "error"; message: string };
 
 interface SecretsModalProps {
   open: boolean;
@@ -61,13 +80,34 @@ const SecretsModal: React.FC<SecretsModalProps> = ({ open, onClose }) => {
     gemini: false,
   });
   const [savedFlash, setSavedFlash] = useState(false);
+  const [tests, setTests] = useState<Record<UserKeyName, TestState>>({
+    openai: { status: "idle" },
+    deepseek: { status: "idle" },
+    gemini: { status: "idle" },
+  });
 
   useEffect(() => {
     if (open) {
       setValues(getAllUserKeys());
       setSavedFlash(false);
+      setTests({
+        openai: { status: "idle" },
+        deepseek: { status: "idle" },
+        gemini: { status: "idle" },
+      });
     }
   }, [open]);
+
+  const runTest = async (id: UserKeyName) => {
+    setTests((prev) => ({ ...prev, [id]: { status: "loading" } }));
+    const result = await testUserKey(id, values[id]);
+    setTests((prev) => ({
+      ...prev,
+      [id]: result.ok
+        ? { status: "ok", message: result.message }
+        : { status: "error", message: result.message },
+    }));
+  };
 
   if (!open) return null;
 
@@ -82,6 +122,14 @@ const SecretsModal: React.FC<SecretsModalProps> = ({ open, onClose }) => {
   const handleClear = (id: UserKeyName) => {
     setValues((prev) => ({ ...prev, [id]: "" }));
     setUserKey(id, "");
+    setTests((prev) => ({ ...prev, [id]: { status: "idle" } }));
+  };
+
+  const updateValue = (id: UserKeyName, value: string) => {
+    setValues((prev) => ({ ...prev, [id]: value }));
+    setTests((prev) =>
+      prev[id].status === "idle" ? prev : { ...prev, [id]: { status: "idle" } },
+    );
   };
 
   const masked = (s: string) =>
@@ -171,12 +219,7 @@ const SecretsModal: React.FC<SecretsModalProps> = ({ open, onClose }) => {
                             ? masked(values[spec.id])
                             : ""
                       }
-                      onChange={(e) =>
-                        setValues((prev) => ({
-                          ...prev,
-                          [spec.id]: e.target.value,
-                        }))
-                      }
+                      onChange={(e) => updateValue(spec.id, e.target.value)}
                       onFocus={() =>
                         setReveal((prev) => ({ ...prev, [spec.id]: true }))
                       }
@@ -212,6 +255,48 @@ const SecretsModal: React.FC<SecretsModalProps> = ({ open, onClose }) => {
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => runTest(spec.id)}
+                    disabled={
+                      tests[spec.id].status === "loading" || !values[spec.id]
+                    }
+                    className={`flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md border transition-all ${
+                      !values[spec.id]
+                        ? "bg-zinc-900/40 border-zinc-800 text-zinc-700 cursor-not-allowed"
+                        : tests[spec.id].status === "loading"
+                          ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
+                          : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-blue-500/50 hover:text-blue-300"
+                    }`}
+                  >
+                    {tests[spec.id].status === "loading" ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        جارِ الفحص...
+                      </>
+                    ) : (
+                      <>
+                        <Wifi className="w-3 h-3" />
+                        اختبار الاتصال
+                      </>
+                    )}
+                  </button>
+
+                  {tests[spec.id].status === "ok" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-400">
+                      <Check className="w-3 h-3" />
+                      {(tests[spec.id] as { message: string }).message}
+                    </span>
+                  )}
+                  {tests[spec.id].status === "error" && (
+                    <span className="flex items-center gap-1 text-[10px] font-mono font-bold text-red-400 truncate max-w-[60%]">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {(tests[spec.id] as { message: string }).message}
+                    </span>
                   )}
                 </div>
               </div>
