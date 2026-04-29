@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "build", "dist", "android", "**/*.test.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
