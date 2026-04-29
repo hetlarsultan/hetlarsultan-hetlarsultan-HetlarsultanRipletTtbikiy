@@ -1,13 +1,24 @@
 import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@google/genai";
 import { CharacterStyle } from "../types";
+import { resolveDeepSeekKey, resolveGeminiKey, resolveOpenAIKey } from "./userKeys";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function makeAI() {
+  return new GoogleGenAI({ apiKey: resolveGeminiKey() });
+}
+
+const ai = new Proxy({} as GoogleGenAI, {
+  get(_t, prop) {
+    const inst = makeAI() as unknown as Record<string | symbol, unknown>;
+    const value = inst[prop];
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(inst) : value;
+  },
+});
 
 // Helper to get the correct AI instance for restricted models (Veo, Lyria, etc.)
 async function getRestrictedAI() {
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = resolveGeminiKey();
   if (!apiKey) {
-    console.warn("Restricted model access attempted without specified API Key. Using default env key.");
+    console.warn("Restricted model access attempted without specified API Key.");
   }
   return new GoogleGenAI({ apiKey: apiKey || "" });
 }
@@ -204,12 +215,12 @@ export async function* chatWithGeminiStream(
 }
 
 async function callThirdPartyModel(model: string, prompt: string): Promise<string> {
-  const apiKey = model === 'chatgpt' ? import.meta.env.VITE_OPENAI_API_KEY : import.meta.env.VITE_DEEPSEEK_API_KEY;
+  const apiKey = model === 'chatgpt' ? resolveOpenAIKey() : resolveDeepSeekKey();
   const baseUrl = model === 'chatgpt' ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
   const modelName = model === 'chatgpt' ? 'gpt-4o' : 'deepseek-chat';
 
   if (!apiKey) {
-    return `[ERROR]: ${model === 'chatgpt' ? 'OpenAI' : 'DeepSeek'} API key missing. Please add VITE_${model.toUpperCase()}_API_KEY in Settings.`;
+    return `[ERROR]: ${model === 'chatgpt' ? 'OpenAI' : 'DeepSeek'} API key missing. افتح إعدادات المفاتيح من زر الترس في الأعلى وأضف المفتاح.`;
   }
 
   try {
