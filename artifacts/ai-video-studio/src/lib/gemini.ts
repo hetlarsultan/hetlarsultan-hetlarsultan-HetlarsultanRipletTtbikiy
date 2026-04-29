@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@google/genai";
 import { CharacterStyle } from "../types";
 import { resolveDeepSeekKey, resolveGeminiKey, resolveOpenAIKey } from "./userKeys";
+import { generateLocalOllama } from "../services/localAi";
 
 function makeAI() {
   return new GoogleGenAI({ apiKey: resolveGeminiKey() });
@@ -161,6 +162,13 @@ export async function chatWithGemini(
   if (modelId === 'chatgpt' || modelId === 'deepseek') {
     return callThirdPartyModel(modelId, message);
   }
+  if (modelId === 'local') {
+    try {
+      return await generateLocalOllama(message);
+    } catch {
+      return "[ERROR]: تعذّر الاتصال بـ Ollama المحلي. تأكد من تشغيله على المنفذ 11434 (راجع التلميح أسفل التبويبات).";
+    }
+  }
 
   const model = modelId;
   try {
@@ -190,6 +198,14 @@ export async function* chatWithGeminiStream(
   if (modelId === 'chatgpt' || modelId === 'deepseek') {
     const res = await callThirdPartyModel(modelId, message);
     yield res;
+    return;
+  }
+  if (modelId === 'local') {
+    try {
+      yield await generateLocalOllama(message);
+    } catch {
+      yield "[ERROR]: تعذّر الاتصال بـ Ollama المحلي على localhost:11434. شغّل: `ollama serve` ثم `ollama run llama3` على جهازك.";
+    }
     return;
   }
 
