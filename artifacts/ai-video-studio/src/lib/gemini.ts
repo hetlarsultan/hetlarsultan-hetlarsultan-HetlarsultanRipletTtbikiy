@@ -2,6 +2,12 @@ import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@g
 import { CharacterStyle } from "../types";
 import { resolveDeepSeekKey, resolveGeminiKey, resolveOpenAIKey } from "./userKeys";
 import { generateLocalOllama } from "../services/localAi";
+import {
+  generateWebLLMOnce,
+  generateWebLLMStream,
+  isWebLLMReady,
+  isWebLLMSupported,
+} from "../services/webLLM";
 
 function makeAI() {
   return new GoogleGenAI({ apiKey: resolveGeminiKey() });
@@ -163,10 +169,20 @@ export async function chatWithGemini(
     return callThirdPartyModel(modelId, message);
   }
   if (modelId === 'local') {
+    if (isWebLLMReady()) {
+      try {
+        return await generateWebLLMOnce(message);
+      } catch (e) {
+        console.warn("WebLLM failed, trying Ollama fallback", e);
+      }
+    }
     try {
       return await generateLocalOllama(message);
     } catch {
-      return "[ERROR]: تعذّر الاتصال بـ Ollama المحلي. تأكد من تشغيله على المنفذ 11434 (راجع التلميح أسفل التبويبات).";
+      const supported = isWebLLMSupported();
+      return supported
+        ? "[ERROR]: لم يتم تحميل النموذج المحلي بعد. اضغط زر «تحميل النموذج» أسفل التبويبات."
+        : "[ERROR]: متصفحك/جهازك لا يدعم WebGPU، ولم يتم العثور على Ollama. الحل: استخدم متصفح Chrome حديث على جهاز يدعم WebGPU، أو ثبّت Ollama على جهازك.";
     }
   }
 
@@ -201,10 +217,22 @@ export async function* chatWithGeminiStream(
     return;
   }
   if (modelId === 'local') {
+    if (isWebLLMReady()) {
+      try {
+        for await (const chunk of generateWebLLMStream(message)) {
+          yield chunk;
+        }
+        return;
+      } catch (e) {
+        console.warn("WebLLM stream failed, trying Ollama fallback", e);
+      }
+    }
     try {
       yield await generateLocalOllama(message);
     } catch {
-      yield "[ERROR]: تعذّر الاتصال بـ Ollama المحلي على localhost:11434. شغّل: `ollama serve` ثم `ollama run llama3` على جهازك.";
+      yield isWebLLMSupported()
+        ? "[ERROR]: لم يتم تحميل النموذج المحلي بعد. اضغط زر «تحميل النموذج» أسفل التبويبات لتحميله مرة واحدة (يعمل أوفلاين بعد ذلك)."
+        : "[ERROR]: متصفحك/جهازك لا يدعم WebGPU. ثبّت Ollama على جهازك أو استخدم متصفح Chrome حديث.";
     }
     return;
   }

@@ -45,6 +45,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { getUserKey } from "../lib/userKeys";
+import LocalModelStatus from "./LocalModelStatus";
 import { motion, AnimatePresence } from "motion/react";
 import { audioAnalyzer } from "../lib/audioAnalysis";
 import {
@@ -2641,28 +2642,7 @@ const ApiKeyHint: React.FC<{ selectedModel: string }> = ({ selectedModel }) => {
   if (!spec) return null;
 
   if (spec.offlineCapable) {
-    return (
-      <div className="w-full flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
-        <HardDrive className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <p className="text-[9px] font-mono font-bold text-amber-300 leading-relaxed">
-            وضع أوفلاين — يتطلب Ollama على جهازك
-          </p>
-          <p className="text-[8.5px] font-mono text-amber-200/70 mt-1 leading-relaxed">
-            ثبّت من{" "}
-            <a
-              href="https://ollama.com/download"
-              target="_blank"
-              rel="noreferrer"
-              className="underline hover:text-amber-100"
-            >
-              ollama.com
-            </a>{" "}
-            ثم شغّل: <code className="text-amber-100">ollama run llama3</code>
-          </p>
-        </div>
-      </div>
-    );
+    return <LocalModelStatus />;
   }
 
   if (!spec.requiresKey) return null;
