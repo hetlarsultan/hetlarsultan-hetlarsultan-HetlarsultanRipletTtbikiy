@@ -64,6 +64,12 @@ export default function App() {
   const [showSecrets, setShowSecrets] = useState(false);
 
   useEffect(() => {
+    const open = () => setShowSecrets(true);
+    window.addEventListener('studio:open-secrets', open);
+    return () => window.removeEventListener('studio:open-secrets', open);
+  }, []);
+
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
     window.addEventListener('resize', checkMobile);
