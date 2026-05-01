@@ -92,20 +92,18 @@ interface WorkspaceProps {
 
 const getSuggestedVoice = (char: Character | undefined, userVoiceType: string | undefined): string => {
   if (!char) return userVoiceType || 'male';
-  
-  const charId = char.id.toLowerCase();
-  
-  // Specific cultural mappings
-  if (charId.includes('sheikh')) return 'sheikh';
-  if (charId.includes('bedouin') || charId.includes('warrior')) return 'bedouin';
-  if (charId.includes('poetess') || (charId.includes('woman') && char.role?.includes('Adult'))) return 'female';
-  if (charId.includes('young-man') || charId.includes('khaleeji')) return 'syrian'; // standard modern
-  if (charId.includes('egyptian')) return 'egyptian';
-  
-  // Default fallbacks
-  if (charId.includes('old-man') || charId.includes('شيخ')) return 'sheikh';
-  if (charId.includes('woman') || charId.includes('girl') || charId.includes('female')) return 'female';
-  
+  // Use the field from constants first (most accurate)
+  if (char.preferredVoice) return char.preferredVoice;
+  // Legacy fallback by id
+  const id = char.id.toLowerCase();
+  if (id.includes('sheikh'))   return 'sheikh';
+  if (id.includes('bedouin') || id.includes('warrior')) return 'bedouin';
+  if (id.includes('poetess'))  return 'female';
+  if (id.includes('egyptian')) return 'egyptian';
+  if (id.includes('young-man') || id.includes('syrian')) return 'syrian';
+  if (id.includes('old-man'))  return 'old-man';
+  if (id.includes('child'))    return 'child';
+  if (id.includes('girl') || id.includes('woman') || id.includes('female')) return 'female';
   return userVoiceType || 'male';
 };
 
