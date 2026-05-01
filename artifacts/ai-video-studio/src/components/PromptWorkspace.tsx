@@ -47,6 +47,7 @@ import {
 import { getUserKey } from "../lib/userKeys";
 import LocalModelStatus from "./LocalModelStatus";
 import SpeakingAvatar from "./SpeakingAvatar";
+import SceneRehearsalModal from "./SceneRehearsalModal";
 import { motion, AnimatePresence } from "motion/react";
 import { audioAnalyzer } from "../lib/audioAnalysis";
 import {
@@ -496,6 +497,7 @@ const PromptWorkspace = React.memo(
         JSON.stringify(characterNames),
       );
     }, [characterNames]);
+    const [showRehearsal, setShowRehearsal] = useState(false);
     const [ffmpegStatus, setFfmpegStatus] = useState<
       "loading" | "ready" | "idle"
     >("idle");
@@ -2100,7 +2102,7 @@ const PromptWorkspace = React.memo(
             {/* Character Tags */}
             {config.selectedCharacters &&
               config.selectedCharacters.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-3 items-start">
                   {config.selectedCharacters.map((char) => (
                     <div
                       key={char.id}
@@ -2132,6 +2134,18 @@ const PromptWorkspace = React.memo(
                       </button>
                     </div>
                   ))}
+
+                  {/* Rehearsal Button — appears when 2+ characters selected */}
+                  {(config.selectedCharacters?.length ?? 0) >= 1 && (
+                    <button
+                      onClick={() => setShowRehearsal(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[8px] font-mono font-black uppercase tracking-wider transition-all active:scale-95 shrink-0"
+                      title="بروفة المشهد: كل ممثل يقرأ سطره مع حركة الفم"
+                    >
+                      <Clapperboard className="w-3 h-3" />
+                      بروفة المشهد
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -2542,6 +2556,15 @@ const PromptWorkspace = React.memo(
             </>
           )}
         </AnimatePresence>
+
+        <SceneRehearsalModal
+          open={showRehearsal}
+          onClose={() => setShowRehearsal(false)}
+          characters={config.selectedCharacters || []}
+          promptText={prompt}
+          config={config}
+          getSuggestedVoice={getSuggestedVoice}
+        />
       </>
     );
   },
