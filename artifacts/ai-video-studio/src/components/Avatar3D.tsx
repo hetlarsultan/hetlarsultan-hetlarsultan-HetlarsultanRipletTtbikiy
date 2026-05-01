@@ -11,7 +11,7 @@ interface Avatar3DProps {
   emotion?: 'neutral' | 'happy' | 'sad' | 'angry' | 'excited' | 'serene';
 }
 
-const DEFAULT_VRM = 'https://pixiv.github.io/three-vrm/examples/models/VRM1_Constraint_Sample.vrm';
+// No default VRM — always use the procedural fallback when no model is supplied
 
 const VisemeComponent: React.FC<{ vrm: VRM; level: number; emotion: string }> = ({ vrm, level, emotion }) => {
   const lastLevel = useRef(0);
@@ -63,18 +63,37 @@ const VisemeComponent: React.FC<{ vrm: VRM; level: number; emotion: string }> = 
   return null;
 };
 
+// Procedural head used when no external 3D model URL is supplied
+const ProceduralHead: React.FC<{ lipSyncLevel: number }> = ({ lipSyncLevel }) => {
+  const smoothLevel = useRef(0);
+  useFrame(() => {
+    smoothLevel.current = THREE.MathUtils.lerp(smoothLevel.current, lipSyncLevel, 0.25);
+  });
+  return (
+    <group position={[0, 1.4, 0]}>
+      <mesh>
+        <sphereGeometry args={[0.4, 32, 32]} />
+        <meshStandardMaterial color="#27272a" metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, -0.15, 0.35]}>
+        <boxGeometry args={[0.15, Math.max(0.02, smoothLevel.current * 0.15), 0.05]} />
+        <meshStandardMaterial color="#f43f5e" emissive="#f43f5e" emissiveIntensity={smoothLevel.current * 2} />
+      </mesh>
+      <pointLight position={[0, -0.15, 0.5]} intensity={smoothLevel.current * 5} color="#f43f5e" />
+    </group>
+  );
+};
+
+// Model is only rendered when a valid URL is provided
 const Model: React.FC<{ url: string; lipSyncLevel: number; emotion: string }> = ({ url, lipSyncLevel, emotion }) => {
   const [vrm, setVrm] = useState<VRM | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const smoothLevel = useRef(0);
 
-  // Load GLTF / VRM
   const gltf = useLoader(GLTFLoader, url, (loader) => {
     loader.register((parser) => new VRMLoaderPlugin(parser));
   });
 
-  useFrame((state) => {
-    // 1. Morph Target Driver
+  useFrame(() => {
     smoothLevel.current = THREE.MathUtils.lerp(smoothLevel.current, lipSyncLevel, 0.25);
     const lv = smoothLevel.current;
 
@@ -96,32 +115,12 @@ const Model: React.FC<{ url: string; lipSyncLevel: number; emotion: string }> = 
       }
     });
 
-    // 2. Extracted VRM Expression Driver
     if (gltf.userData.vrm && !vrm) {
-       const vrmData = gltf.userData.vrm;
-       VRMUtils.rotateVRM0(vrmData);
-       setVrm(vrmData);
-       setIsLoading(false);
+      const vrmData = gltf.userData.vrm;
+      VRMUtils.rotateVRM0(vrmData);
+      setVrm(vrmData);
     }
   });
-
-  if (isLoading && !vrm && !url.includes('vrm')) {
-    // Cinematic Fallback Proxy (Sphere-based)
-    return (
-      <group position={[0, 1.4, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.4, 32, 32]} />
-          <meshStandardMaterial color="#27272a" metalness={0.8} roughness={0.2} />
-        </mesh>
-        {/* Mouth simulation */}
-        <mesh position={[0, -0.15, 0.35]}>
-           <boxGeometry args={[0.15, lipSyncLevel * 0.15 + 0.02, 0.05]} />
-           <meshStandardMaterial color="#f43f5e" emissive="#f43f5e" emissiveIntensity={lipSyncLevel * 2} />
-        </mesh>
-        <pointLight position={[0, -0.15, 0.5]} intensity={lipSyncLevel * 5} color="#f43f5e" />
-      </group>
-    );
-  }
 
   return (
     <group>
@@ -159,8 +158,11 @@ export const Avatar3D: React.FC<Avatar3DProps> = ({ modelUrl, lipSyncLevel, emot
         
         <Environment preset="studio" />
 
-        <React.Suspense fallback={null}>
-          <Model url={modelUrl || DEFAULT_VRM} lipSyncLevel={lipSyncLevel} emotion={emotion} />
+        <React.Suspense fallback={<ProceduralHead lipSyncLevel={lipSyncLevel} />}>
+          {modelUrl
+            ? <Model url={modelUrl} lipSyncLevel={lipSyncLevel} emotion={emotion} />
+            : <ProceduralHead lipSyncLevel={lipSyncLevel} />
+          }
         </React.Suspense>
         
         {/* Background Atmosphere */}
