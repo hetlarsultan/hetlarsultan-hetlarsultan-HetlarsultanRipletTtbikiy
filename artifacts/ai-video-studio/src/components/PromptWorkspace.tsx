@@ -42,12 +42,8 @@ import {
   Activity,
   Lock,
   KeyRound,
-  HardDrive,
 } from "lucide-react";
 import { getUserKey } from "../lib/userKeys";
-import LocalModelStatus from "./LocalModelStatus";
-import SpeakingAvatar from "./SpeakingAvatar";
-import SceneRehearsalModal from "./SceneRehearsalModal";
 import { motion, AnimatePresence } from "motion/react";
 import { audioAnalyzer } from "../lib/audioAnalysis";
 import {
@@ -92,18 +88,20 @@ interface WorkspaceProps {
 
 const getSuggestedVoice = (char: Character | undefined, userVoiceType: string | undefined): string => {
   if (!char) return userVoiceType || 'male';
-  // Use the field from constants first (most accurate)
-  if (char.preferredVoice) return char.preferredVoice;
-  // Legacy fallback by id
-  const id = char.id.toLowerCase();
-  if (id.includes('sheikh'))   return 'sheikh';
-  if (id.includes('bedouin') || id.includes('warrior')) return 'bedouin';
-  if (id.includes('poetess'))  return 'female';
-  if (id.includes('egyptian')) return 'egyptian';
-  if (id.includes('young-man') || id.includes('syrian')) return 'syrian';
-  if (id.includes('old-man'))  return 'old-man';
-  if (id.includes('child'))    return 'child';
-  if (id.includes('girl') || id.includes('woman') || id.includes('female')) return 'female';
+  
+  const charId = char.id.toLowerCase();
+  
+  // Specific cultural mappings
+  if (charId.includes('sheikh')) return 'sheikh';
+  if (charId.includes('bedouin') || charId.includes('warrior')) return 'bedouin';
+  if (charId.includes('poetess') || (charId.includes('woman') && char.role?.includes('Adult'))) return 'female';
+  if (charId.includes('young-man') || charId.includes('khaleeji')) return 'syrian'; // standard modern
+  if (charId.includes('egyptian')) return 'egyptian';
+  
+  // Default fallbacks
+  if (charId.includes('old-man') || charId.includes('شيخ')) return 'sheikh';
+  if (charId.includes('woman') || charId.includes('girl') || charId.includes('female')) return 'female';
+  
   return userVoiceType || 'male';
 };
 
@@ -278,19 +276,7 @@ const WorldSynthesis = React.memo(({ isMobile }: { isMobile?: boolean }) => (
 ));
 
 const CharacterConsistencyEngine = React.memo(
-  ({
-    isMobile,
-    config,
-    promptText,
-    lipSyncLevel,
-    onLipSyncLevel,
-  }: {
-    isMobile?: boolean;
-    config: ShotConfig;
-    promptText: string;
-    lipSyncLevel: number;
-    onLipSyncLevel: (level: number) => void;
-  }) => {
+  ({ isMobile, config }: { isMobile?: boolean; config: ShotConfig }) => {
     const firstChar = config.selectedCharacters?.[0];
     const hasChars = (config.selectedCharacters?.length || 0) > 0;
 
@@ -326,28 +312,18 @@ const CharacterConsistencyEngine = React.memo(
                 معرف الشخصية الأساسي
               </label>
               <div className="flex items-center space-x-2 p-2 bento-inner bg-blue-600/5 relative overflow-hidden group/prime">
-                <div className="shrink-0 relative">
-                  {hasChars ? (
-                    <SpeakingAvatar
-                      character={firstChar}
-                      text={promptText}
-                      voiceType={config.voiceType}
-                      size="sm"
-                      externalLevel={lipSyncLevel}
-                      onLevelChange={onLipSyncLevel}
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-zinc-800 rounded-xl border border-blue-500/20 overflow-hidden relative">
-                      <img
-                        src="https://picsum.photos/seed/empty/120/120"
-                        className="w-full h-full object-cover grayscale"
-                        alt="Empty slot"
-                        referrerPolicy="no-referrer"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent" />
-                    </div>
-                  )}
+                <div className="w-12 h-12 bg-zinc-800 rounded-lg border border-blue-500/30 overflow-hidden shrink-0 relative">
+                  <img
+                    src={
+                      firstChar?.avatar ||
+                      "https://picsum.photos/seed/empty/120/120"
+                    }
+                    className={`w-full h-full object-cover transition-all ${hasChars ? "grayscale-[0.2]" : "grayscale"} group-hover/prime:scale-110 group-hover/prime:grayscale-0`}
+                    alt="Protagonist"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent" />
                 </div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black text-white truncate flex items-center gap-1.5">
@@ -495,7 +471,6 @@ const PromptWorkspace = React.memo(
         JSON.stringify(characterNames),
       );
     }, [characterNames]);
-    const [showRehearsal, setShowRehearsal] = useState(false);
     const [ffmpegStatus, setFfmpegStatus] = useState<
       "loading" | "ready" | "idle"
     >("idle");
@@ -1888,13 +1863,7 @@ const PromptWorkspace = React.memo(
         />
 
         {!isMobile && (
-          <CharacterConsistencyEngine
-            isMobile={isMobile}
-            config={config}
-            promptText={prompt}
-            lipSyncLevel={lipSyncLevel}
-            onLipSyncLevel={setLipSyncLevel}
-          />
+          <CharacterConsistencyEngine isMobile={isMobile} config={config} />
         )}
 
         {/* Prompt Engine - Bento Card - Row 5-6, Col 1-4 */}
@@ -2100,7 +2069,7 @@ const PromptWorkspace = React.memo(
             {/* Character Tags */}
             {config.selectedCharacters &&
               config.selectedCharacters.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3 items-start">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {config.selectedCharacters.map((char) => (
                     <div
                       key={char.id}
@@ -2132,18 +2101,6 @@ const PromptWorkspace = React.memo(
                       </button>
                     </div>
                   ))}
-
-                  {/* Rehearsal Button — appears when 2+ characters selected */}
-                  {(config.selectedCharacters?.length ?? 0) >= 1 && (
-                    <button
-                      onClick={() => setShowRehearsal(true)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[8px] font-mono font-black uppercase tracking-wider transition-all active:scale-95 shrink-0"
-                      title="بروفة المشهد: كل ممثل يقرأ سطره مع حركة الفم"
-                    >
-                      <Clapperboard className="w-3 h-3" />
-                      بروفة المشهد
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -2554,15 +2511,6 @@ const PromptWorkspace = React.memo(
             </>
           )}
         </AnimatePresence>
-
-        <SceneRehearsalModal
-          open={showRehearsal}
-          onClose={() => setShowRehearsal(false)}
-          characters={config.selectedCharacters || []}
-          promptText={prompt}
-          config={config}
-          getSuggestedVoice={getSuggestedVoice}
-        />
       </>
     );
   },
@@ -2577,7 +2525,6 @@ const MODEL_OPTIONS: {
   Icon: React.ComponentType<{ className?: string }>;
   requiresKey: "openai" | "deepseek" | null;
   providerName: string;
-  offlineCapable?: boolean;
 }[] = [
   {
     id: "gemini-3-flash-preview",
@@ -2602,15 +2549,6 @@ const MODEL_OPTIONS: {
     Icon: Brain,
     requiresKey: "deepseek",
     providerName: "DeepSeek",
-  },
-  {
-    id: "local",
-    label: "Local",
-    iconColor: "text-amber-400",
-    Icon: HardDrive,
-    requiresKey: null,
-    providerName: "Ollama",
-    offlineCapable: true,
   },
 ];
 
@@ -2638,7 +2576,7 @@ const ModelSelectorGrid: React.FC<{
     window.dispatchEvent(new CustomEvent("studio:open-secrets"));
 
   return (
-    <div className="grid grid-cols-4 gap-1.5">
+    <div className="grid grid-cols-3 gap-2">
       {MODEL_OPTIONS.map((m) => {
         const locked = m.requiresKey ? !getUserKey(m.requiresKey) : false;
         const isSelected = selectedModel === m.id;
@@ -2689,13 +2627,7 @@ const ModelSelectorGrid: React.FC<{
 const ApiKeyHint: React.FC<{ selectedModel: string }> = ({ selectedModel }) => {
   useUserKeysSnapshot();
   const spec = MODEL_OPTIONS.find((m) => m.id === selectedModel);
-  if (!spec) return null;
-
-  if (spec.offlineCapable) {
-    return <LocalModelStatus />;
-  }
-
-  if (!spec.requiresKey) return null;
+  if (!spec || !spec.requiresKey) return null;
   if (getUserKey(spec.requiresKey)) return null;
 
   return (
