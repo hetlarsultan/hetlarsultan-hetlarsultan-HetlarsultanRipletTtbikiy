@@ -2,12 +2,6 @@ import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@g
 import { CharacterStyle } from "../types";
 import { resolveDeepSeekKey, resolveGeminiKey, resolveOpenAIKey } from "./userKeys";
 import { generateLocalOllama } from "../services/localAi";
-import {
-  generateWebLLMOnce,
-  generateWebLLMStream,
-  isWebLLMReady,
-  isWebLLMSupported,
-} from "../services/webLLM";
 
 function makeAI() {
   return new GoogleGenAI({ apiKey: resolveGeminiKey() });
@@ -169,20 +163,10 @@ export async function chatWithGemini(
     return callThirdPartyModel(modelId, message);
   }
   if (modelId === 'local') {
-    if (isWebLLMReady()) {
-      try {
-        return await generateWebLLMOnce(message);
-      } catch (e) {
-        console.warn("WebLLM failed, trying Ollama fallback", e);
-      }
-    }
     try {
       return await generateLocalOllama(message);
     } catch {
-      const supported = isWebLLMSupported();
-      return supported
-        ? "[ERROR]: لم يتم تحميل النموذج المحلي بعد. اضغط زر «تحميل النموذج» أسفل التبويبات."
-        : "[ERROR]: متصفحك/جهازك لا يدعم WebGPU، ولم يتم العثور على Ollama. الحل: استخدم متصفح Chrome حديث على جهاز يدعم WebGPU، أو ثبّت Ollama على جهازك.";
+      return "[ERROR]: تعذّر الاتصال بـ Ollama المحلي. تأكد من تشغيله على المنفذ 11434 (راجع التلميح أسفل التبويبات).";
     }
   }
 
@@ -217,22 +201,10 @@ export async function* chatWithGeminiStream(
     return;
   }
   if (modelId === 'local') {
-    if (isWebLLMReady()) {
-      try {
-        for await (const chunk of generateWebLLMStream(message)) {
-          yield chunk;
-        }
-        return;
-      } catch (e) {
-        console.warn("WebLLM stream failed, trying Ollama fallback", e);
-      }
-    }
     try {
       yield await generateLocalOllama(message);
     } catch {
-      yield isWebLLMSupported()
-        ? "[ERROR]: لم يتم تحميل النموذج المحلي بعد. اضغط زر «تحميل النموذج» أسفل التبويبات لتحميله مرة واحدة (يعمل أوفلاين بعد ذلك)."
-        : "[ERROR]: متصفحك/جهازك لا يدعم WebGPU. ثبّت Ollama على جهازك أو استخدم متصفح Chrome حديث.";
+      yield "[ERROR]: تعذّر الاتصال بـ Ollama المحلي على localhost:11434. شغّل: `ollama serve` ثم `ollama run llama3` على جهازك.";
     }
     return;
   }
@@ -499,98 +471,6 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Voice personality profiles — each voiceType has its own prosody fingerprint
-// ─────────────────────────────────────────────────────────────────────────────
-interface VoiceProfile {
-  pitch: number;   // 0.5..2.0
-  rate: number;    // 0.5..2.0
-  volume: number;  // 0..1
-  // Dialect BCP-47 tag (Arabic variants)
-  arLang?: string;
-  // Preferred Arabic voice name keywords
-  arNames?: string[];
-  // Non-Arabic fallback name keywords
-  enNames?: string[];
-}
-
-const VOICE_PROFILES: Record<string, VoiceProfile> = {
-  // ── Arabic character voices ───────────────────────────────────────────────
-  sheikh: {
-    pitch: 0.78, rate: 0.82, volume: 0.95,
-    arLang: "ar-SA",
-    arNames: ["malik", "omar", "saudi", "male", "ar-sa"],
-    enNames: ["daniel", "alex", "guy", "male"],
-  },
-  bedouin: {
-    pitch: 0.82, rate: 0.90, volume: 1.0,
-    arLang: "ar-SA",
-    arNames: ["saudi", "khalid", "ar-sa", "male"],
-    enNames: ["daniel", "guy", "male"],
-  },
-  syrian: {
-    pitch: 1.00, rate: 1.02, volume: 0.9,
-    arLang: "ar-SY",
-    arNames: ["syria", "ar-sy", "levant"],
-    enNames: ["daniel", "alex"],
-  },
-  egyptian: {
-    pitch: 1.02, rate: 1.05, volume: 0.9,
-    arLang: "ar-EG",
-    arNames: ["egypt", "ar-eg", "cairo"],
-    enNames: ["daniel", "alex"],
-  },
-  iraqi: {
-    pitch: 0.96, rate: 0.98, volume: 0.9,
-    arLang: "ar-IQ",
-    arNames: ["iraq", "ar-iq"],
-    enNames: ["daniel"],
-  },
-  // ── Generic character types ───────────────────────────────────────────────
-  female: {
-    pitch: 1.15, rate: 1.00, volume: 0.9,
-    arLang: "ar-SA",
-    arNames: ["zeina", "hana", "female", "woman"],
-    enNames: ["samantha", "victoria", "female", "woman", "girl"],
-  },
-  girl: {
-    pitch: 1.25, rate: 1.05, volume: 0.85,
-    arLang: "ar-SA",
-    arNames: ["hana", "female", "zeina"],
-    enNames: ["samantha", "victoria", "karen", "moira"],
-  },
-  child: {
-    pitch: 1.40, rate: 1.08, volume: 0.85,
-    arLang: "ar-SA",
-    arNames: ["hana", "female"],    // use female voice pitched up
-    enNames: ["junior", "reed", "samantha"],
-  },
-  male: {
-    pitch: 1.00, rate: 1.00, volume: 0.9,
-    arLang: "ar-SA",
-    arNames: ["omar", "male", "ar-sa"],
-    enNames: ["daniel", "alex", "guy", "male"],
-  },
-  "old-man": {
-    pitch: 0.72, rate: 0.80, volume: 0.85,
-    arLang: "ar-SA",
-    arNames: ["omar", "malik", "male", "ar-sa"],
-    enNames: ["daniel", "fred", "ralph", "alex"],
-  },
-  natural: {
-    pitch: 1.00, rate: 0.98, volume: 0.9,
-    arLang: "ar-SA",
-    arNames: ["omar", "ar-sa"],
-    enNames: ["daniel", "alex"],
-  },
-  cartoon: {
-    pitch: 1.30, rate: 1.10, volume: 0.9,
-    arLang: "ar-EG",
-    arNames: ["hana", "female"],
-    enNames: ["samantha", "moira"],
-  },
-};
-
 export async function generateAdvancedVoice(
   text: string,
   voiceType: string,
@@ -599,99 +479,104 @@ export async function generateAdvancedVoice(
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // ── Language detection ────────────────────────────────────────────────
-    const hasArabic   = /[\u0600-\u06FF]/.test(text);
-    const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
-    const hasRussian  = /[\u0400-\u04FF]/.test(text);
-    const hasHindi    = /[\u0900-\u097F]/.test(text);
-    const hasChinese  = /[\u4E00-\u9FFF]/.test(text);
-    const hasKorean   = /[\uAC00-\uD7AF]/.test(text);
+    // Precise language detection
+    const arabicRegex = /[\u0600-\u06FF]/;
+    const hasArabic = arabicRegex.test(text);
+    const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+    const hasRussian = /[\u0400-\u04FF]/.test(text);
+    const hasHindi = /[\u0900-\u097F]/.test(text);
+    const hasChinese = /[\u4E00-\u9FFF]/.test(text);
+    const hasKorean = /[\uAC00-\uD7AF]/.test(text);
 
-    if      (hasJapanese) utterance.lang = "ja-JP";
-    else if (hasRussian)  utterance.lang = "ru-RU";
-    else if (hasHindi)    utterance.lang = "hi-IN";
-    else if (hasChinese)  utterance.lang = "zh-CN";
-    else if (hasKorean)   utterance.lang = "ko-KR";
-    else if (hasArabic) {
-      const profile = VOICE_PROFILES[voiceType];
-      utterance.lang = profile?.arLang || "ar-SA";
-    } else {
-      utterance.lang = /^[A-Za-z0-9\s.,!?'\-]+$/.test(text) ? "en-US" : "ar-SA";
+    // Set language based strictly on content
+    if (hasArabic) utterance.lang = "ar-SA";
+    else if (hasJapanese) utterance.lang = "ja-JP";
+    else if (hasRussian) utterance.lang = "ru-RU";
+    else if (hasHindi) utterance.lang = "hi-IN";
+    else if (hasChinese) utterance.lang = "zh-CN";
+    else if (hasKorean) utterance.lang = "ko-KR";
+    else {
+      // Check if it's primarily English/Latin
+      utterance.lang = /^[A-Za-z0-9\s.,!?-]+$/.test(text) ? "en-US" : "ar-SA";
     }
 
-    // ── Voice selection ───────────────────────────────────────────────────
-    const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-    const profile = VOICE_PROFILES[voiceType] || VOICE_PROFILES.male;
+    // Use cached voices if available, otherwise fetch immediately
+    const voices =
+      cachedVoices.length > 0
+        ? cachedVoices
+        : window.speechSynthesis.getVoices();
+    let targetVoice;
 
-    let targetVoice: SpeechSynthesisVoice | undefined;
-
-    if (hasArabic) {
-      // 1. Try exact dialect locale + preferred name keywords
-      const arLang = profile.arLang || "ar-SA";
-      const arNames = profile.arNames || [];
-      targetVoice = voices.find(v =>
-        v.lang === arLang &&
-        arNames.some(n => v.name.toLowerCase().includes(n))
-      );
-      // 2. Try any voice with matching locale
-      if (!targetVoice) targetVoice = voices.find(v => v.lang === arLang);
-      // 3. Try any Arabic voice
-      if (!targetVoice) targetVoice = voices.find(v => v.lang.startsWith("ar"));
+    // Dialect overrides based on voiceType
+    if (voiceType === "syrian" && hasArabic) utterance.lang = "ar-SY";
+    if (voiceType === "egyptian" && hasArabic) utterance.lang = "ar-EG";
+    if (voiceType === "iraqi" && hasArabic) utterance.lang = "ar-IQ";
+    
+    // Improved voice selection based on language and type
+    if (hasArabic || ["syrian", "iraqi", "egyptian", "bedouin", "sheikh"].includes(voiceType || "")) {
+      // Preferred voices mapping
+      targetVoice = voices.find((v) => 
+        v.lang.startsWith("ar") && (
+          (voiceType === "syrian" && (v.lang.includes("SY") || v.name.includes("Syria"))) ||
+          (voiceType === "egyptian" && (v.lang.includes("EG") || v.name.includes("Egypt"))) ||
+          (voiceType === "iraqi" && (v.lang.includes("IQ") || v.name.includes("Iraq"))) ||
+          (voiceType === "bedouin" && (v.lang.includes("SA") || v.name.includes("Saudi"))) ||
+          (voiceType === "sheikh" && v.name.includes("Male"))
+        )
+      ) || voices.find(v => v.lang.startsWith("ar"));
     } else if (hasJapanese) {
-      targetVoice = voices.find(v => v.lang.startsWith("ja"));
+      targetVoice = voices.find((v) => v.lang.startsWith("ja"));
     } else if (hasChinese) {
-      targetVoice = voices.find(v => v.lang.startsWith("zh"));
+      targetVoice = voices.find((v) => v.lang.startsWith("zh"));
     } else {
-      const enNames = profile.enNames || ["daniel"];
-      targetVoice = voices.find(v =>
-        v.lang.startsWith("en") &&
-        enNames.some(n => v.name.toLowerCase().includes(n))
-      ) || voices.find(v => v.lang.startsWith("en"));
+      const voiceMap: Record<string, string[]> = {
+        girl: ["female", "girl", "woman", "samantha"],
+        child: ["child", "boy", "girl", "kid"],
+        cartoon: ["female", "girl", "samantha", "moira"],
+        natural: ["male", "man", "guy", "daniel", "alex"],
+        "old-man": ["male", "man", "guy", "daniel", "alex"], // Will adjust pitch later
+        male: ["male", "man", "guy", "daniel"],
+        female: ["female", "woman", "girl", "samantha"]
+      };
+      
+      const candidates = voiceMap[voiceType] || ["google", "english"];
+      targetVoice = voices.find((v) => 
+        v.lang.startsWith("en") && 
+        candidates.some(c => v.name.toLowerCase().includes(c))
+      );
     }
 
     if (targetVoice) utterance.voice = targetVoice;
-
-    // ── Prosody ───────────────────────────────────────────────────────────
-    utterance.pitch  = profile.pitch;
-    utterance.rate   = profile.rate;
-    utterance.volume = profile.volume;
-
-    // ── Arabic speech-rate nuance ─────────────────────────────────────────
-    // Count Arabic syllable-heavy letters to fine-tune rate
-    if (hasArabic) {
-      const longVowels = (text.match(/[اوي]/g) || []).length;
-      const wordCount  = text.split(/\s+/).length;
-      const ratio      = longVowels / Math.max(1, wordCount);
-      // More long vowels = slightly slower and more melodic
-      utterance.rate = Math.max(0.7, profile.rate - ratio * 0.04);
+    
+    // Adjust pitch and rate for character personality
+    if (voiceType === "old-man") {
+      utterance.pitch = 0.8; // Deeper voice
+      utterance.rate = 0.85; // Slower speaking
+    } else if (voiceType === "child") {
+      utterance.pitch = 1.25; // Higher pitch
+      utterance.rate = 1.05; // Slightly faster
+    } else {
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
     }
 
-    // ── Lip-sync signal generator ─────────────────────────────────────────
-    // Produces a naturalistic Arabic speech envelope:
-    //   - Syllable bursts  (8-14 Hz) mimicking Arabic short/long vowel patterns
-    //   - Word boundaries  (2-4  Hz) for rhythm and pausing
-    //   - Micro-tremor     (30+ Hz) for vocal fold realism
+    // Simulate real-time lip sync feedback during speech
     let animationId: number;
-
     utterance.onstart = () => {
-      const startTime = performance.now();
       const tick = () => {
         if (!window.speechSynthesis.speaking) return;
-        const t = (performance.now() - startTime) / 1000;
-
-        // Syllable pulse (Arabic: avg ~5 syllables/sec)
-        const syllablePulse = Math.sin(t * Math.PI * 2 * 5.5) * 0.45 + 0.45;
-        // Word rhythm (slower envelope)
-        const wordRhythm    = Math.sin(t * Math.PI * 2 * 2.2) * 0.25 + 0.55;
-        // Micro tremor for naturalness
-        const tremor        = Math.sin(t * Math.PI * 2 * 38)  * 0.06;
-        // Occasional silence for word boundaries
-        const silence       = Math.random() > 0.97 ? 0 : 1;
-
-        const level = Math.max(0, Math.min(1,
-          syllablePulse * wordRhythm * silence + tremor
-        ));
-
+        
+        // Staccato simulation: burst of movement for syllables
+        // Uses a combination of low-freq wave and fast noise
+        const time = Date.now() / 1000;
+        const lowFreq = Math.sin(time * 12); // Pulse for words
+        const highFreq = Math.sin(time * 45); // Quiver for detail
+        
+        let level = Math.max(0, (lowFreq * 0.6 + highFreq * 0.2 + 0.3));
+        
+        // Randomly lower level to simulate gaps between words
+        if (Math.random() > 0.95) level = 0;
+        
         if (onSpeechUpdate) onSpeechUpdate(level);
         animationId = requestAnimationFrame(tick);
       };
@@ -699,11 +584,6 @@ export async function generateAdvancedVoice(
     };
 
     utterance.onend = () => {
-      cancelAnimationFrame(animationId);
-      if (onSpeechUpdate) onSpeechUpdate(0);
-    };
-
-    utterance.onerror = () => {
       cancelAnimationFrame(animationId);
       if (onSpeechUpdate) onSpeechUpdate(0);
     };
