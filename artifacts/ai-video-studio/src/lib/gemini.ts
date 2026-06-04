@@ -225,7 +225,11 @@ async function callThirdPartyModel(model: string, prompt: string): Promise<strin
       })
     });
     const data = await response.json();
-    return data.choices[0].message.content || "No response content.";
+    if (!response.ok || !data.choices?.[0]?.message?.content) {
+      const errMsg = data.error?.message || `HTTP ${response.status}`;
+      return `[API_ERROR]: ${errMsg}`;
+    }
+    return data.choices[0].message.content;
   } catch (err) {
     return `[CONNECT_ERROR]: Failed to reach ${model} servers. Check API key and internet status.`;
   }
@@ -449,6 +453,9 @@ export async function generateAdvancedVoice(
   voiceType: string,
   onSpeechUpdate?: (lipSyncLevel: number) => void,
 ): Promise<VoiceData> {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return { audioUrl: "UNSUPPORTED", lipSync: [] };
+  }
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
 

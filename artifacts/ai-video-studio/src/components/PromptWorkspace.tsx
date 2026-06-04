@@ -36,7 +36,6 @@ import {
   ScanSearch,
   PlayCircle,
   Zap,
-  Mic2 as MicIcon,
   Volume2,
   Play,
   Activity,
