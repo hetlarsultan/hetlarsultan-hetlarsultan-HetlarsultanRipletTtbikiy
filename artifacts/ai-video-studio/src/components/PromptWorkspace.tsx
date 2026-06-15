@@ -40,7 +40,11 @@ import {
   Volume2,
   Play,
   Activity,
+  Lock,
+  KeyRound,
+  HardDrive,
 } from "lucide-react";
+import { getUserKey } from "../lib/userKeys";
 import { motion, AnimatePresence } from "motion/react";
 import { audioAnalyzer } from "../lib/audioAnalysis";
 import {
@@ -2319,38 +2323,11 @@ const PromptWorkspace = React.memo(
             <Cpu className="w-3.5 h-3.5 text-blue-500" />
             Model_Node_Interface
           </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                id: "gemini-3-flash-preview",
-                label: "Gemini 3",
-                icon: <Sparkles className="w-3 h-3 text-blue-400" />,
-              },
-              {
-                id: "chatgpt",
-                label: "ChatGPT",
-                icon: <Zap className="w-3 h-3 text-emerald-400" />,
-              },
-              {
-                id: "deepseek",
-                label: "DeepSeek",
-                icon: <Brain className="w-3 h-3 text-purple-400" />,
-              },
-            ].map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setSelectedModel(m.id)}
-                className={`p-2 bento-inner flex flex-col items-center gap-1 transition-all ${
-                  selectedModel === m.id
-                    ? "bg-blue-600/20 border-blue-600/50 text-white"
-                    : "bg-black/40 text-zinc-500 border-zinc-900"
-                }`}
-              >
-                {m.icon}
-                <span className="text-[8px] font-black">{m.label}</span>
-              </button>
-            ))}
-          </div>
+          <ModelSelectorGrid
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+          />
+          <ApiKeyHint selectedModel={selectedModel} />
           <div className="flex gap-2">
             <button
               onClick={() => setUseSearch(!useSearch)}
@@ -2541,3 +2518,170 @@ const PromptWorkspace = React.memo(
 );
 
 export default PromptWorkspace;
+
+const MODEL_OPTIONS: {
+  id: string;
+  label: string;
+  iconColor: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  requiresKey: "openai" | "deepseek" | null;
+  providerName: string;
+  offlineCapable?: boolean;
+}[] = [
+  {
+    id: "gemini-3-flash-preview",
+    label: "Gemini 3",
+    iconColor: "text-blue-400",
+    Icon: Sparkles,
+    requiresKey: null,
+    providerName: "Gemini",
+  },
+  {
+    id: "chatgpt",
+    label: "ChatGPT",
+    iconColor: "text-emerald-400",
+    Icon: Zap,
+    requiresKey: "openai",
+    providerName: "OpenAI",
+  },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    iconColor: "text-purple-400",
+    Icon: Brain,
+    requiresKey: "deepseek",
+    providerName: "DeepSeek",
+  },
+  {
+    id: "local",
+    label: "Local",
+    iconColor: "text-amber-400",
+    Icon: HardDrive,
+    requiresKey: null,
+    providerName: "Ollama",
+    offlineCapable: true,
+  },
+];
+
+function useUserKeysSnapshot() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => setTick((t) => t + 1);
+    window.addEventListener("studio:user-keys-changed", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("studio:user-keys-changed", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return tick;
+}
+
+const ModelSelectorGrid: React.FC<{
+  selectedModel: string;
+  setSelectedModel: (id: string) => void;
+}> = ({ selectedModel, setSelectedModel }) => {
+  useUserKeysSnapshot();
+
+  const openSecrets = () =>
+    window.dispatchEvent(new CustomEvent("studio:open-secrets"));
+
+  return (
+    <div className="grid grid-cols-4 gap-1.5">
+      {MODEL_OPTIONS.map((m) => {
+        const locked = m.requiresKey ? !getUserKey(m.requiresKey) : false;
+        const isSelected = selectedModel === m.id;
+        const handleClick = () => {
+          if (locked) {
+            openSecrets();
+            return;
+          }
+          setSelectedModel(m.id);
+        };
+        return (
+          <button
+            key={m.id}
+            onClick={handleClick}
+            title={
+              locked
+                ? `أضف مفتاح ${m.providerName} لتفعيل هذا النموذج`
+                : m.label
+            }
+            className={`relative p-2 bento-inner flex flex-col items-center gap-1 transition-all ${
+              isSelected
+                ? "bg-blue-600/20 border-blue-600/50 text-white"
+                : locked
+                  ? "bg-black/40 text-zinc-700 border-zinc-900 hover:border-amber-500/40 hover:text-amber-400"
+                  : "bg-black/40 text-zinc-500 border-zinc-900 hover:text-zinc-300"
+            }`}
+          >
+            <div className="relative">
+              <m.Icon
+                className={`w-3 h-3 ${locked ? "opacity-40" : m.iconColor}`}
+              />
+              {locked && (
+                <Lock className="absolute -top-1.5 -right-2 w-2.5 h-2.5 text-amber-400" />
+              )}
+            </div>
+            <span
+              className={`text-[8px] font-black ${locked ? "opacity-60" : ""}`}
+            >
+              {m.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+const ApiKeyHint: React.FC<{ selectedModel: string }> = ({ selectedModel }) => {
+  useUserKeysSnapshot();
+  const spec = MODEL_OPTIONS.find((m) => m.id === selectedModel);
+  if (!spec) return null;
+
+  if (spec.offlineCapable) {
+    return (
+      <div className="w-full flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+        <HardDrive className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] font-mono font-bold text-amber-300 leading-relaxed">
+            وضع أوفلاين — يتطلب Ollama على جهازك
+          </p>
+          <p className="text-[8.5px] font-mono text-amber-200/70 mt-1 leading-relaxed">
+            ثبّت من{" "}
+            <a
+              href="https://ollama.com/download"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-amber-100"
+            >
+              ollama.com
+            </a>{" "}
+            ثم شغّل: <code className="text-amber-100">ollama run llama3</code>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!spec.requiresKey) return null;
+  if (getUserKey(spec.requiresKey)) return null;
+
+  return (
+    <button
+      onClick={() =>
+        window.dispatchEvent(new CustomEvent("studio:open-secrets"))
+      }
+      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all group"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+        <span className="text-[9px] font-mono font-bold text-amber-300 truncate">
+          مفتاح {spec.providerName} مفقود — اضغط لإضافته
+        </span>
+      </div>
+      <KeyRound className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform shrink-0" />
+    </button>
+  );
+};
