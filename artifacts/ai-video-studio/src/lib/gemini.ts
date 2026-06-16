@@ -292,7 +292,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
     
     // Attempt 1: Veo 3.1 Pro (High Quality)
     try {
-      console.log("Attempting Veo 3.1 Pro (High-Quality)...");
+      console.debug("Attempting Veo 3.1 Pro (High-Quality)...");
       operation = await rai.models.generateVideos({
         model: 'veo-3.1-generate-preview',
         prompt,
@@ -325,7 +325,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
 
     if (!operation) return randomFallback;
 
-    console.log("Veo Operation Created:", operation.name);
+    console.debug("Veo Operation Created:", operation.name);
 
     // Polling with safety timeout (max 90 seconds for snappier demo feel)
     const startTime = Date.now();
@@ -338,13 +338,13 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
         console.error("Polling error, returning fallback:", pollError);
         return randomFallback;
       }
-      console.log(`Polling Veo Status (${Math.round((Date.now() - startTime)/1000)}s)...`);
+      console.debug(`Polling Veo Status (${Math.round((Date.now() - startTime)/1000)}s)...`);
       if (pollInterval < 6000) pollInterval += 1000;
     }
 
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (videoUri) {
-      console.log("Veo Success:", videoUri);
+      console.debug("Veo Success:", videoUri);
       return videoUri;
     }
     
@@ -358,7 +358,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
 
 export async function generateLyriaMusic(prompt: string): Promise<string> {
   try {
-    console.log("Attempting Lyria Music Generation:", prompt);
+    console.debug("Attempting Lyria Music Generation:", prompt);
     const rai = await getRestrictedAI();
     const response = await rai.models.generateContentStream({
       model: "lyria-3-clip-preview",

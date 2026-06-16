@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Dashboard from './components/Dashboard';
-import Gallery from './components/Gallery';
-import Sidebar from './components/Sidebar';
-import PromptWorkspace from './components/PromptWorkspace';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { VideoModel, ShotConfig, MediaType } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layout, Zap, Users, Mountain, Box, Smartphone, Home, FolderOpen, ArrowLeft } from 'lucide-react';
+
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Gallery = React.lazy(() => import('./components/Gallery'));
+const Sidebar = React.lazy(() => import('./components/Sidebar'));
+const PromptWorkspace = React.lazy(() => import('./components/PromptWorkspace'));
+
+const TabSpinner = () => (
+  <div className="flex items-center justify-center h-full w-full">
+    <div className="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+  </div>
+);
 
 const TabButton = React.memo(({ id, activeTab, onClick, icon: Icon, label }: { id: string, activeTab: string, onClick: () => void, icon: any, label: string }) => (
   <button
@@ -142,26 +149,29 @@ export default function App() {
       {/* Main Content Area */}
       <main className={`flex-grow overflow-hidden relative ${isMobile ? 'pb-20' : 'p-6'}`}>
         {!isMobile ? (
-          <div className="grid grid-cols-12 grid-rows-6 gap-4 h-full">
-            <Sidebar 
-              model={model} 
-              setModel={setModel} 
-              config={config} 
-              setConfig={(newConfig) => {
-                setConfig(newConfig);
-                if (isMobile && newConfig.selectedCharacters && newConfig.selectedCharacters.length > 0) {
-                  changeTab('studio');
-                }
-              }} 
-            />
-            <PromptWorkspace 
-              model={model} 
-              config={config} 
-              setConfig={setConfig}
-            />
-          </div>
+          <Suspense fallback={<TabSpinner />}>
+            <div className="grid grid-cols-12 grid-rows-6 gap-4 h-full">
+              <Sidebar 
+                model={model} 
+                setModel={setModel} 
+                config={config} 
+                setConfig={(newConfig) => {
+                  setConfig(newConfig);
+                  if (newConfig.selectedCharacters && newConfig.selectedCharacters.length > 0) {
+                    changeTab('studio');
+                  }
+                }} 
+              />
+              <PromptWorkspace 
+                model={model} 
+                config={config} 
+                setConfig={setConfig}
+              />
+            </div>
+          </Suspense>
         ) : (
           <div className="h-full w-full overflow-y-auto custom-scrollbar p-4">
+             <Suspense fallback={<TabSpinner />}>
              <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -271,6 +281,7 @@ export default function App() {
                    )}
                 </motion.div>
              </AnimatePresence>
+             </Suspense>
           </div>
         )}
       </main>

@@ -8,7 +8,7 @@ interface GalleryProps {
   onSelect: (gen: Generation) => void;
 }
 
-export default function Gallery({ onClose, onSelect }: GalleryProps) {
+function Gallery({ onClose, onSelect }: GalleryProps) {
   const [generations, setGenerations] = React.useState<Generation[]>([]);
 
   React.useEffect(() => {
@@ -109,3 +109,5 @@ export default function Gallery({ onClose, onSelect }: GalleryProps) {
     </div>
   );
 }
+
+export default React.memo(Gallery);

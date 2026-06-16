@@ -1,0 +1,2 @@
+- [TypeScript Uint8Array fix](uint8array-fix.md) — `Uint8Array<ArrayBuffer>` cast needed in audioAnalysis.ts and ffmpegService.ts; checkpoints revert it, re-apply each session.
+- [CharacterAnimator memo export](memo-export-pattern.md) — named-export component must be renamed to `Base` variant then re-exported as `memo(Base)` to avoid breaking named import in PromptWorkspace.

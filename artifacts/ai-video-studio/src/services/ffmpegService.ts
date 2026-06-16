@@ -32,5 +32,5 @@ export async function mergeAudioVideo(videoBlob: Blob, audioBlob: Blob): Promise
   await instance.exec(['-i', 'input.mp4', '-i', 'input.mp3', '-c', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'output.mp4']);
 
   const data = await instance.readFile('output.mp4');
-  return new Blob([data], { type: 'video/mp4' });
+  return new Blob([data as Uint8Array<ArrayBuffer>], { type: 'video/mp4' });
 }

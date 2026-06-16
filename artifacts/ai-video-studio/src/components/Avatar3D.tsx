@@ -152,7 +152,7 @@ export const Avatar3D: React.FC<Avatar3DProps> = ({ modelUrl, lipSyncLevel, emot
           penumbra={1} 
           intensity={1} 
           castShadow 
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[512, 512]}
         />
         <pointLight position={[-5, 2, -2]} intensity={0.5} color="#4488ff" />
         <pointLight position={[2, 1, 3]} intensity={0.4} color="#ff8844" />
