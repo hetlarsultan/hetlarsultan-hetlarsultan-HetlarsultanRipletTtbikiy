@@ -9,7 +9,10 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "cap:sync": "cap sync android",
-    "cap:open": "cap open android"
+    "cap:open": "cap open android",
+    "android:build": "vite build --config vite.config.ts && cap sync android",
+    "android:debug": "vite build --config vite.config.ts && cap sync android && cd android && ./gradlew assembleDebug",
+    "android:release": "vite build --config vite.config.ts && cap sync android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
