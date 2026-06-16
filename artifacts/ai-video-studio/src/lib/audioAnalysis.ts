@@ -1,7 +1,7 @@
 export class AudioAnalyzer {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
-  private dataArray: Uint8Array<ArrayBuffer> | null = null;
+  private dataArray: Uint8Array | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private animationId: number | null = null;
 
@@ -15,7 +15,7 @@ export class AudioAnalyzer {
     this.source.connect(this.analyser);
 
     const bufferLength = this.analyser.frequencyBinCount;
-    this.dataArray = new Uint8Array(bufferLength) as Uint8Array<ArrayBuffer>;
+    this.dataArray = new Uint8Array(bufferLength);
 
     const tick = () => {
       if (!this.analyser || !this.dataArray) return;

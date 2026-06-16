@@ -36,6 +36,7 @@ import {
   ScanSearch,
   PlayCircle,
   Zap,
+  Mic2 as MicIcon,
   Volume2,
   Play,
   Activity,
@@ -450,8 +451,6 @@ const PromptWorkspace = React.memo(
     const [prompt, setPrompt] = useState("");
     const [isOptimizing, setIsOptimizing] = useState(false);
     const optimizationCache = React.useRef<Record<string, OptimizedPrompt>>({});
-    const apkIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
-    const recognitionRef = React.useRef<any>(null);
     const [characterNames, setCharacterNames] = useState<
       Record<string, string>
     >(() => {
@@ -513,7 +512,6 @@ const PromptWorkspace = React.memo(
       if (!SpeechRecognition) return;
       
       const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
       recognition.lang = config.dialect === 'syrian' ? 'ar-SY' : 
                          config.dialect === 'egyptian' ? 'ar-EG' : 
                          config.dialect === 'iraqi' ? 'ar-IQ' : 
@@ -683,18 +681,17 @@ const PromptWorkspace = React.memo(
         "Finalizing_APK",
       ];
       setApkStage(stages[0]);
-      if (apkIntervalRef.current) clearInterval(apkIntervalRef.current);
-      apkIntervalRef.current = setInterval(() => {
+      const interval = setInterval(() => {
         setApkProgress((prev) => {
           if (prev === null || prev >= 100) {
-            if (apkIntervalRef.current) clearInterval(apkIntervalRef.current);
+            clearInterval(interval);
             setTimeout(() => {
               setApkProgress(null);
               setApkStage("");
             }, 3000);
             return 100;
           }
-          const nextProgress = prev + 2;
+          const nextProgress = prev + 2; // Twice as fast build for 'High Speed' request
           const stageIndex = Math.min(
             Math.floor(nextProgress / 20),
             stages.length - 1,
@@ -702,17 +699,8 @@ const PromptWorkspace = React.memo(
           setApkStage(stages[stageIndex]);
           return nextProgress;
         });
-      }, 50);
+      }, 50); // Faster interval
     }, []);
-    useEffect(() => {
-      return () => {
-        if (apkIntervalRef.current) clearInterval(apkIntervalRef.current);
-        if (recognitionRef.current) {
-          try { recognitionRef.current.abort(); } catch {}
-        }
-      };
-    }, []);
-
     useEffect(() => {
       const style = document.createElement("style");
       style.innerHTML = `
@@ -1215,7 +1203,7 @@ const PromptWorkspace = React.memo(
           setIsGenerating(false);
         }
       },
-      [prompt, mediaType, config, useThinking, useSearch, selectedModel, characterNames],
+      [prompt, mediaType, config, useThinking],
     );
 
     useEffect(() => {
