@@ -1,41 +1,137 @@
-# AI Video Studio Pro v2
+<div align="center">
 
-استوديو ذكاء اصطناعي متكامل للفيديو والصور والصوت. يدعم Veo 3 و Gemini 3 و Nano Banana 2 و Lyria و ChatGPT و DeepSeek.
+# 🎬 AI Video Studio Pro v2.5
 
-## التشغيل المحلي (الويب)
+**استوديو الفيديو الاحترافي بالذكاء الاصطناعي**
 
-سيتم تشغيل التطبيق تلقائياً على المعاينة في Replit عبر Vite.
+A full-stack Arabic-first AI video production studio powered by Google Gemini, Veo 3.1, and Lyria — with 3D avatar animation, real-time lip-sync, and Android APK support.
 
-## بناء APK لأندرويد 7+
+</div>
 
-التطبيق مغلّف بـ Capacitor 8 ويعمل على Android 7 (API 24) فأعلى.
+---
 
-### المتطلبات
-- Android Studio (مع Android SDK 36)
-- JDK 21
-- متصفح حديث WebView (يأتي تلقائياً مع أي جهاز Android 7+)
+## ✨ Features
 
-### الخطوات
+| Feature | Description |
+|---------|-------------|
+| 🎥 **Video Generation** | Veo 3.1 Pro/Lite with automatic fallback |
+| 🖼️ **Image Generation** | Gemini 2.5 Flash Image |
+| 🎵 **Music Generation** | Lyria 3 AI music synthesis |
+| 💬 **AI Chat** | Gemini 3 Flash / Pro with thinking mode & Google Search |
+| 🎭 **3D Avatar** | VRM/GLB character rendering with real-time lip-sync |
+| 🎙️ **Voice Synthesis** | Web Speech API with Arabic dialect support |
+| 🎬 **Drama Production** | Script-to-multi-shot automatic storyboarding |
+| 📱 **Android APK** | Capacitor-powered native Android build |
+| 🔒 **Offline-first** | Works without API keys with intelligent fallbacks |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- pnpm 9+
+
+### Setup
+
 ```bash
-# 1) بناء واجهة الويب
-pnpm --filter @workspace/ai-video-studio run build
+# Install dependencies
+pnpm install
 
-# 2) مزامنة المخرجات مع مشروع Android
-pnpm --filter @workspace/ai-video-studio run cap:sync
+# Set your Gemini API key
+echo "VITE_GEMINI_API_KEY=your_key_here" > .env.local
 
-# 3) فتح المشروع في Android Studio
-pnpm --filter @workspace/ai-video-studio run cap:open
-
-# أو بناء APK مباشرة:
-cd artifacts/ai-video-studio/android
-./gradlew assembleDebug
-# الناتج: android/app/build/outputs/apk/debug/app-debug.apk
+# Start the dev server
+pnpm run dev
 ```
 
-### تثبيت APK على الجهاز
-انقل ملف `app-debug.apk` إلى جهاز Android، فعّل "تثبيت من مصادر غير معروفة"، ثم افتح الملف لتثبيته.
+Get a free Gemini API key at: https://aistudio.google.com/app/apikey
 
-## مفاتيح API
-- `GEMINI_API_KEY` (مطلوب) — للوصول إلى Gemini و Veo و Nano Banana و Lyria
-- `VITE_OPENAI_API_KEY` (اختياري) — لتفعيل ChatGPT
-- `VITE_DEEPSEEK_API_KEY` (اختياري) — لتفعيل DeepSeek
+---
+
+## 🔑 Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_GEMINI_API_KEY` | Recommended | Google Gemini API key (Veo, Lyria, image gen) |
+| `VITE_OLLAMA_URL` | Optional | Custom Ollama server URL (default: `http://localhost:11434`) |
+
+Keys can also be set at runtime via the **API Keys** button in the app header.
+
+---
+
+## 📱 Building the Android APK
+
+See [`BUILD_APK.md`](./BUILD_APK.md) for the full guide.
+
+**Quick build:**
+```bash
+# 1. Build web assets + sync to Android
+pnpm run android:build
+
+# 2. Open in Android Studio
+pnpm run cap:open
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+artifacts/ai-video-studio/
+├── src/
+│   ├── App.tsx                   # Root layout, lazy-loaded tab routing
+│   ├── components/
+│   │   ├── PromptWorkspace.tsx   # Main generation studio
+│   │   ├── Sidebar.tsx           # Model & actor configuration
+│   │   ├── Dashboard.tsx         # Home screen with quick actions
+│   │   ├── CharacterAnimator.tsx # 2D/3D lip-sync renderer (memoized)
+│   │   ├── Avatar3D.tsx          # Three.js VRM/GLB viewer
+│   │   └── Gallery.tsx           # Generation history viewer (memoized)
+│   ├── lib/
+│   │   ├── gemini.ts             # Google GenAI wrapper (Veo, Lyria, chat)
+│   │   ├── userKeys.ts           # Runtime API key management
+│   │   └── audioAnalysis.ts      # Microphone frequency analyzer
+│   ├── services/
+│   │   ├── ffmpegService.ts      # Client-side video/audio merging (WASM)
+│   │   └── localAi.ts            # Ollama local LLM integration
+│   ├── constants.ts              # Fixed characters, visual filters
+│   └── types.ts                  # TypeScript type definitions
+├── android/                      # Native Android project (Capacitor)
+├── public/
+│   └── ffmpeg/                   # Bundled FFmpeg WASM core
+├── capacitor.config.ts           # Capacitor configuration
+├── BUILD_APK.md                  # Android build guide
+└── vite.config.ts                # Vite bundler config
+```
+
+---
+
+## 🛠️ Scripts
+
+| Script | Description |
+|--------|-------------|
+| `pnpm run dev` | Start development server |
+| `pnpm run build` | Production build |
+| `pnpm run typecheck` | TypeScript type checking |
+| `pnpm run android:build` | Build web + sync to Android |
+| `pnpm run android:debug` | Build debug APK |
+| `pnpm run android:release` | Build release APK |
+| `pnpm run cap:sync` | Sync web assets to Android |
+| `pnpm run cap:open` | Open Android Studio |
+
+---
+
+## 🤖 AI Models Supported
+
+- **Video:** Veo 3.1 Pro, Veo 3.1 Lite (Google DeepMind)
+- **Image:** Gemini 2.5 Flash Image
+- **Music:** Lyria 3 (Google)
+- **Chat:** Gemini 3 Flash / Pro, GPT-4o (OpenAI), DeepSeek Chat
+- **Local:** Llama 3 via Ollama (configurable via `VITE_OLLAMA_URL`)
+
+---
+
+## 📄 License
+
+© 2026 مختبرات الذكاء الاصطناعي — Enterprise License

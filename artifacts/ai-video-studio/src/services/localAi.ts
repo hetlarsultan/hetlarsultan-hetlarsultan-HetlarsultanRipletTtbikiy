@@ -1,7 +1,11 @@
+const OLLAMA_BASE_URL =
+  (typeof window !== 'undefined' && (window as any).__OLLAMA_URL__) ||
+  import.meta.env?.VITE_OLLAMA_URL ||
+  'http://localhost:11434';
 
 export async function generateLocalOllama(prompt: string): Promise<string> {
   try {
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

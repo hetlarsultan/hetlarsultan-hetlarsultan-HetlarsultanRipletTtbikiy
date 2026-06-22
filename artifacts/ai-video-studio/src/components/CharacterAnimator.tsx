@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Character, ShotConfig } from '../types';
 import { Activity, Clock, MapPin, Zap, Box, Image as ImageIcon } from 'lucide-react';
@@ -43,7 +43,7 @@ const ENVIRONMENTS = {
   }
 };
 
-export const CharacterAnimator: React.FC<CharacterAnimatorProps> = ({
+const CharacterAnimatorBase: React.FC<CharacterAnimatorProps> = ({
   character,
   lipSyncLevel,
   config
@@ -247,3 +247,5 @@ export const CharacterAnimator: React.FC<CharacterAnimatorProps> = ({
     </div>
   );
 };
+
+export const CharacterAnimator = memo(CharacterAnimatorBase);

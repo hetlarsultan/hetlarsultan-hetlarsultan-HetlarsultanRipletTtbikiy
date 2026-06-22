@@ -1,24 +1,13 @@
 import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@google/genai";
 import { CharacterStyle } from "../types";
-import { resolveDeepSeekKey, resolveGeminiKey, resolveOpenAIKey } from "./userKeys";
 
-function makeAI() {
-  return new GoogleGenAI({ apiKey: resolveGeminiKey() });
-}
-
-const ai = new Proxy({} as GoogleGenAI, {
-  get(_t, prop) {
-    const inst = makeAI() as unknown as Record<string | symbol, unknown>;
-    const value = inst[prop];
-    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(inst) : value;
-  },
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Helper to get the correct AI instance for restricted models (Veo, Lyria, etc.)
 async function getRestrictedAI() {
-  const apiKey = resolveGeminiKey();
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("Restricted model access attempted without specified API Key.");
+    console.warn("Restricted model access attempted without specified API Key. Using default env key.");
   }
   return new GoogleGenAI({ apiKey: apiKey || "" });
 }
@@ -215,12 +204,12 @@ export async function* chatWithGeminiStream(
 }
 
 async function callThirdPartyModel(model: string, prompt: string): Promise<string> {
-  const apiKey = model === 'chatgpt' ? resolveOpenAIKey() : resolveDeepSeekKey();
+  const apiKey = model === 'chatgpt' ? import.meta.env.VITE_OPENAI_API_KEY : import.meta.env.VITE_DEEPSEEK_API_KEY;
   const baseUrl = model === 'chatgpt' ? 'https://api.openai.com/v1/chat/completions' : 'https://api.deepseek.com/chat/completions';
   const modelName = model === 'chatgpt' ? 'gpt-4o' : 'deepseek-chat';
 
   if (!apiKey) {
-    return `[ERROR]: ${model === 'chatgpt' ? 'OpenAI' : 'DeepSeek'} API key missing. افتح إعدادات المفاتيح من زر الترس في الأعلى وأضف المفتاح.`;
+    return `[ERROR]: ${model === 'chatgpt' ? 'OpenAI' : 'DeepSeek'} API key missing. Please add VITE_${model.toUpperCase()}_API_KEY in Settings.`;
   }
 
   try {
@@ -303,7 +292,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
     
     // Attempt 1: Veo 3.1 Pro (High Quality)
     try {
-      console.log("Attempting Veo 3.1 Pro (High-Quality)...");
+      console.debug("Attempting Veo 3.1 Pro (High-Quality)...");
       operation = await rai.models.generateVideos({
         model: 'veo-3.1-generate-preview',
         prompt,
@@ -336,7 +325,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
 
     if (!operation) return randomFallback;
 
-    console.log("Veo Operation Created:", operation.name);
+    console.debug("Veo Operation Created:", operation.name);
 
     // Polling with safety timeout (max 90 seconds for snappier demo feel)
     const startTime = Date.now();
@@ -349,13 +338,13 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
         console.error("Polling error, returning fallback:", pollError);
         return randomFallback;
       }
-      console.log(`Polling Veo Status (${Math.round((Date.now() - startTime)/1000)}s)...`);
+      console.debug(`Polling Veo Status (${Math.round((Date.now() - startTime)/1000)}s)...`);
       if (pollInterval < 6000) pollInterval += 1000;
     }
 
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (videoUri) {
-      console.log("Veo Success:", videoUri);
+      console.debug("Veo Success:", videoUri);
       return videoUri;
     }
     
@@ -369,7 +358,7 @@ export async function generateVeoVideo(prompt: string): Promise<string> {
 
 export async function generateLyriaMusic(prompt: string): Promise<string> {
   try {
-    console.log("Attempting Lyria Music Generation:", prompt);
+    console.debug("Attempting Lyria Music Generation:", prompt);
     const rai = await getRestrictedAI();
     const response = await rai.models.generateContentStream({
       model: "lyria-3-clip-preview",

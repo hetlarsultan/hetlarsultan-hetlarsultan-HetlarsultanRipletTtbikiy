@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Dashboard from './components/Dashboard';
-import Gallery from './components/Gallery';
-import Sidebar from './components/Sidebar';
-import PromptWorkspace from './components/PromptWorkspace';
-import SecretsModal from './components/SecretsModal';
-import ProviderStatus from './components/ProviderStatus';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { VideoModel, ShotConfig, MediaType } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Layout, Zap, Users, Mountain, Box, Smartphone, Home, FolderOpen, ArrowLeft, KeyRound } from 'lucide-react';
+import { Layout, Zap, Users, Mountain, Box, Smartphone, Home, FolderOpen, ArrowLeft } from 'lucide-react';
+
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Gallery = React.lazy(() => import('./components/Gallery'));
+const Sidebar = React.lazy(() => import('./components/Sidebar'));
+const PromptWorkspace = React.lazy(() => import('./components/PromptWorkspace'));
+
+const TabSpinner = () => (
+  <div className="flex items-center justify-center h-full w-full">
+    <div className="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+  </div>
+);
 
 const TabButton = React.memo(({ id, activeTab, onClick, icon: Icon, label }: { id: string, activeTab: string, onClick: () => void, icon: any, label: string }) => (
   <button
@@ -61,13 +66,6 @@ export default function App() {
 
   // History state for back button
   const [tabHistory, setTabHistory] = useState<typeof activeTab[]>(['home']);
-  const [showSecrets, setShowSecrets] = useState(false);
-
-  useEffect(() => {
-    const open = () => setShowSecrets(true);
-    window.addEventListener('studio:open-secrets', open);
-    return () => window.removeEventListener('studio:open-secrets', open);
-  }, []);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -124,16 +122,6 @@ export default function App() {
         
         {!isMobile ? (
           <div className="flex items-center space-x-6">
-            <button
-              onClick={() => setShowSecrets(true)}
-              className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 rounded-full px-3 py-1.5 border border-zinc-800 hover:border-blue-500/40 transition-colors group"
-              title="إعدادات مفاتيح API"
-            >
-              <KeyRound className="w-3 h-3 text-zinc-400 group-hover:text-blue-400 transition-colors" />
-              <span className="text-[10px] font-mono font-bold text-zinc-400 group-hover:text-blue-400 transition-colors">مفاتيح API</span>
-              <span className="w-px h-3 bg-zinc-800 mx-1" />
-              <ProviderStatus />
-            </button>
             <div className="flex items-center space-x-2 bg-blue-500/10 rounded-full px-4 py-1.5 border border-blue-500/20">
                <Zap className="w-3 h-3 text-blue-500 animate-pulse" />
                <span className="text-[10px] font-mono font-bold text-blue-400">السرعة القصوى: مفعلة</span>
@@ -152,46 +140,38 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSecrets(true)}
-              className="flex items-center gap-1.5 h-8 rounded-full border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 active:scale-95 transition-all px-2"
-              aria-label="إعدادات مفاتيح API"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-zinc-400" />
-              <ProviderStatus compact />
-            </button>
-            <div className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center bg-zinc-900/50">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            </div>
+          <div className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center bg-zinc-900/50">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
           </div>
         )}
       </header>
-      <SecretsModal open={showSecrets} onClose={() => setShowSecrets(false)} />
 
       {/* Main Content Area */}
       <main className={`flex-grow overflow-hidden relative ${isMobile ? 'pb-20' : 'p-6'}`}>
         {!isMobile ? (
-          <div className="grid grid-cols-12 grid-rows-6 gap-4 h-full">
-            <Sidebar 
-              model={model} 
-              setModel={setModel} 
-              config={config} 
-              setConfig={(newConfig) => {
-                setConfig(newConfig);
-                if (isMobile && newConfig.selectedCharacters && newConfig.selectedCharacters.length > 0) {
-                  changeTab('studio');
-                }
-              }} 
-            />
-            <PromptWorkspace 
-              model={model} 
-              config={config} 
-              setConfig={setConfig}
-            />
-          </div>
+          <Suspense fallback={<TabSpinner />}>
+            <div className="grid grid-cols-12 grid-rows-6 gap-4 h-full">
+              <Sidebar 
+                model={model} 
+                setModel={setModel} 
+                config={config} 
+                setConfig={(newConfig) => {
+                  setConfig(newConfig);
+                  if (newConfig.selectedCharacters && newConfig.selectedCharacters.length > 0) {
+                    changeTab('studio');
+                  }
+                }} 
+              />
+              <PromptWorkspace 
+                model={model} 
+                config={config} 
+                setConfig={setConfig}
+              />
+            </div>
+          </Suspense>
         ) : (
           <div className="h-full w-full overflow-y-auto custom-scrollbar p-4">
+             <Suspense fallback={<TabSpinner />}>
              <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -301,6 +281,7 @@ export default function App() {
                    )}
                 </motion.div>
              </AnimatePresence>
+             </Suspense>
           </div>
         )}
       </main>
