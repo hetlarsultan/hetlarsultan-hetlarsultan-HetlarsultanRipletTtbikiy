@@ -1,7 +1,7 @@
-import { GoogleGenAI, Type, ThinkingLevel, DynamicRetrievalConfigMode } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { CharacterStyle } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 // Helper to get the correct AI instance for restricted models (Veo, Lyria, etc.)
 async function getRestrictedAI() {
